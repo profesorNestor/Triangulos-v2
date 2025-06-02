@@ -626,25 +626,31 @@
                 const altura = sAdj * Math.sin(kAng);
                 let solutions = [];
 
-                let temp_A1 = A, temp_B1 = B, temp_C1 = C;
-                if (nameAngAdj === "A") temp_A1 = angAdj_calc_acute;
-                else if (nameAngAdj === "B") temp_B1 = angAdj_calc_acute;
-                else temp_C1 = angAdj_calc_acute;
-                
+                // Solución 1 (ángulo adyacente agudo)
+                let temp_A1 = (nameAngAdj === "A" ? angAdj_calc_acute : (A_in !== undefined ? A_in : undefined));
+                let temp_B1 = (nameAngAdj === "B" ? angAdj_calc_acute : (B_in !== undefined ? B_in : undefined));
+                let temp_C1 = (nameAngAdj === "C" ? angAdj_calc_acute : (C_in !== undefined ? C_in : undefined));
+
+                if (A_in === kAng) temp_A1 = kAng; else if (B_in === kAng) temp_B1 = kAng; else if (C_in === kAng) temp_C1 = kAng;
+
+
                 if (temp_A1 !== undefined && temp_B1 !== undefined && temp_C1 === undefined) temp_C1 = PI - temp_A1 - temp_B1;
                 else if (temp_A1 !== undefined && temp_C1 !== undefined && temp_B1 === undefined) temp_B1 = PI - temp_A1 - temp_C1;
                 else if (temp_B1 !== undefined && temp_C1 !== undefined && temp_A1 === undefined) temp_A1 = PI - temp_B1 - temp_C1;
+
 
                 if (temp_A1 > EPSILON && temp_B1 > EPSILON && temp_C1 > EPSILON && temp_A1 < PI - EPSILON && temp_B1 < PI - EPSILON && temp_C1 < PI - EPSILON) {
                     sRem_calc = sOp * Math.sin( (nameAngRem === "A" ? temp_A1 : (nameAngRem === "B" ? temp_B1 : temp_C1)) ) / Math.sin(kAng);
                     if (sRem_calc > EPSILON) solutions.push({ angAdj: angAdj_calc_acute, angRem: (nameAngRem === "A" ? temp_A1 : (nameAngRem === "B" ? temp_B1 : temp_C1)), sRem: sRem_calc, type: "agudo" });
                 }
                 
+                // Solución 2 (ángulo adyacente obtuso) - solo si es ambiguo
                 if (kAng < PI / 2 - EPSILON && sOp < sAdj - EPSILON && sOp > altura + EPSILON) { 
-                    let temp_A2 = A, temp_B2 = B, temp_C2 = C;
-                    if (nameAngAdj === "A") temp_A2 = angAdj_calc_obtuse;
-                    else if (nameAngAdj === "B") temp_B2 = angAdj_calc_obtuse;
-                    else temp_C2 = angAdj_calc_obtuse;
+                    let temp_A2 = (nameAngAdj === "A" ? angAdj_calc_obtuse : (A_in !== undefined ? A_in : undefined));
+                    let temp_B2 = (nameAngAdj === "B" ? angAdj_calc_obtuse : (B_in !== undefined ? B_in : undefined));
+                    let temp_C2 = (nameAngAdj === "C" ? angAdj_calc_obtuse : (C_in !== undefined ? C_in : undefined));
+
+                    if (A_in === kAng) temp_A2 = kAng; else if (B_in === kAng) temp_B2 = kAng; else if (C_in === kAng) temp_C2 = kAng;
 
                     if (temp_A2 !== undefined && temp_B2 !== undefined && temp_C2 === undefined) temp_C2 = PI - temp_A2 - temp_B2;
                     else if (temp_A2 !== undefined && temp_C2 !== undefined && temp_B2 === undefined) temp_B2 = PI - temp_A2 - temp_C2;
@@ -657,6 +663,7 @@
                 } else if (Math.abs(sOp - altura) < EPSILON && sOp >= altura - EPSILON) { 
                     // Solución única (triángulo rectángulo)
                 }
+
 
                 if (solutions.length === 0) {
                     throw new Error(`No hay solución válida en SSA. Lado opuesto ${sOp.toFixed(2)}, altura ${altura.toFixed(2)}, sin(${nameAngAdj})=${sin_angAdj.toFixed(4)}.`);
@@ -690,7 +697,6 @@
             throw new Error("Error de consistencia: los lados calculados no cumplen la desigualdad triangular.");
         }
         
-        // AJUSTE: Mostrar modal solo si es iniciado por el usuario
         if(isUserInitiated) {
             if (ssaWarning) {
                 showModal("Advertencia SSA ⚠️", ssaWarning, false); 
@@ -731,7 +737,7 @@
         const perimeter = a + b + c;
         if (perimeter > EPSILON) {
             calculatedElements.incenter = { 
-                x: (a * pA.x + b * pB.x + c * pC.x) / perimeter, // Correcta: vértice ponderado por lado opuesto
+                x: (a * pA.x + b * pB.x + c * pC.x) / perimeter,
                 y: (a * pA.y + b * pB.y + c * pC.y) / perimeter
             };
             calculatedElements.angleBisectors = [
@@ -744,6 +750,7 @@
             calculatedElements.inradius = (perimeter > EPSILON) ? (2 * areaHeron) / perimeter : 0;
         }
 
+        // Mediatrices (usando la función mejorada)
         function getPerpendicularLineImproved(sideP1, sideP2, midPt, characteristicSize) {
             const dx_side = sideP2.x - sideP1.x;
             const dy_side = sideP2.y - sideP1.y;
@@ -769,6 +776,7 @@
         const pb_CA_data = getPerpendicularLineImproved(pC, pA, calculatedElements.midpoints.midCA, characteristicSizeForMediatrix);
         calculatedElements.perpBisectorsData = [pb_AB_data, pb_BC_data, pb_CA_data].filter(pb => pb !== null);
         
+        // Circuncentro Robusto
         function calculateCircumcenterRobust(p1, p2, p3) {
             const D = 2 * (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
             if (Math.abs(D) < EPSILON) return null; 
@@ -798,6 +806,7 @@
             calculatedElements.circumradius = 0;
         }
 
+        // Alturas (usando la función corregida)
         function calculateAltitudeCorrect(vertex, sideP1, sideP2) {    
             const A_line = sideP2.y - sideP1.y;    
             const B_line = sideP1.x - sideP2.x;    
@@ -813,6 +822,7 @@
         const altC = calculateAltitudeCorrect(pC, pA, pB);
         calculatedElements.altitudes = [altA, altB, altC];
         
+        // Ortocentro Robusto
         function calculateOrthocenterRobust(vertices, altitudes, angles) {
             const { pA, pB, pC } = vertices;
             const { A_rad, B_rad, C_rad } = angles;
@@ -1167,20 +1177,20 @@
 
         // === DIBUJO DE CUADRÍCULA (OPCIONAL) ===
         if (drawOptions.grid) {
-            const TARGET_GRID_CELLS_ON_SCREEN = 15; 
+            const TARGET_GRID_CELLS_ON_SCREEN = 8; // AJUSTE: Menos celdas para cuadrícula más espaciada
             let gridSizeWorld = Math.min(triWidth > EPSILON ? triWidth : Infinity, triHeight > EPSILON ? triHeight : Infinity) / TARGET_GRID_CELLS_ON_SCREEN;
             
             if (gridSizeWorld > EPSILON) {
                 const p = Math.pow(10, Math.floor(Math.log10(gridSizeWorld)));
                 gridSizeWorld = Math.round(gridSizeWorld / p) * p;
-                if (gridSizeWorld < triangleSize * 0.05) gridSizeWorld = triangleSize * 0.05; 
+                if (gridSizeWorld < triangleSize * 0.1) gridSizeWorld = triangleSize * 0.1; // AJUSTE: Tamaño mínimo de celda
                 if (gridSizeWorld < EPSILON * 10) gridSizeWorld = Math.max(EPSILON * 10, p / 10);
             } else {
-                gridSizeWorld = Math.max(0.5, triangleSize * 0.05); 
+                gridSizeWorld = Math.max(0.5, triangleSize * 0.1); // AJUSTE
             }
             
             ctx.strokeStyle = colors.grid;
-            ctx.lineWidth = Math.max(0.5 / currentDisplayScale, 0.5); 
+            ctx.lineWidth = Math.max(0.15 / currentDisplayScale, triangleSize * 0.001); // AJUSTE: Grosor de cuadrícula muy fino
             ctx.globalAlpha = 0.3; 
             
             const worldView = {
@@ -1452,7 +1462,7 @@
     canvas.addEventListener('touchend', (e) => { e.preventDefault(); isPanning = false; lastPinchDistance = 0; }, { passive: false });
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (!currentTriangle) return; if (e.touches.length === 1 && isPanning) { const dx = e.touches[0].clientX - lastPanPosition.x; const dy = e.touches[0].clientY - lastPanPosition.y; panOffset.x += dx; panOffset.y += dy; lastPanPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY }; } else if (e.touches.length === 2) { const currentPinchDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (lastPinchDistance > 0) { const oldScaleFactor = scaleFactor; scaleFactor *= currentPinchDistance / lastPinchDistance; scaleFactor = Math.max(0.05, Math.min(scaleFactor, 50)); const rect = canvas.getBoundingClientRect(); const pinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left; const pinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top; const worldPinchX_before = (pinchCenterX - (rect.width / 2 + panOffset.x)) / (lastCalculatedGeometry.scaleToFit * oldScaleFactor) + (lastCalculatedGeometry.minX + lastCalculatedGeometry.width / 2); const worldPinchY_before = (pinchCenterY - (rect.height / 2 + panOffset.y)) / (lastCalculatedGeometry.scaleToFit * oldScaleFactor) + (lastCalculatedGeometry.minY + lastCalculatedGeometry.height / 2); panOffset.x = pinchCenterX - rect.width / 2 - (worldPinchX_before - (lastCalculatedGeometry.minX + lastCalculatedGeometry.width / 2)) * (lastCalculatedGeometry.scaleToFit * scaleFactor); panOffset.y = pinchCenterY - rect.height / 2 - (worldPinchY_before - (lastCalculatedGeometry.minY + lastCalculatedGeometry.height / 2)) * (lastCalculatedGeometry.scaleToFit * scaleFactor); } lastPinchDistance = currentPinchDistance; } requestAnimationFrame(drawTriangleOnCanvas); }, { passive: false });
 
-    calculateButton.addEventListener('click', () => handleCalculate(true)); // AJUSTE: Pasar true para indicar que es iniciado por el usuario
+    calculateButton.addEventListener('click', () => handleCalculate(true)); 
     precisionSelect.addEventListener('change', () => { if (currentTriangle) { displayTriangleResults(currentTriangle); requestAnimationFrame(drawTriangleOnCanvas); } });
     exportButton.addEventListener('click', () => { if (!currentTriangle) { showModal('Error de Exportación 🚫', 'No hay ningún triángulo dibujado para exportar.'); return; } try { const dataURL = canvas.toDataURL('image/png'); const link = document.createElement('a'); link.download = 'triangulo_calculado.png'; link.href = dataURL; document.body.appendChild(link); link.click(); document.body.removeChild(link); showModal('Exportación Exitosa ✅', 'La imagen del triángulo ha sido descargada.', false); } catch (e) { showModal('Error de Exportación 🚫', 'No se pudo exportar la imagen. Error: ' + e.message); console.error("Error al exportar canvas:", e); } });
     Object.keys(chkElements).forEach(key => { if (chkElements[key]) { chkElements[key].addEventListener('change', (e) => { drawOptions[key] = e.target.checked; if (currentTriangle) { updateLastCalculatedGeometry(); requestAnimationFrame(drawTriangleOnCanvas); } }); } });
@@ -1510,7 +1520,7 @@
         document.getElementById('inputType0').value = 'sideA'; document.getElementById('inputValue0').value = '3';
         document.getElementById('inputType1').value = 'sideB'; document.getElementById('inputValue1').value = '4';
         document.getElementById('inputType2').value = 'sideC'; document.getElementById('inputValue2').value = '5';
-        handleCalculate(false); // AJUSTE: Calcular y dibujar el triángulo 3-4-5 por defecto al inicio, sin mostrar modal
+        handleCalculate(false); 
     }
     document.addEventListener('DOMContentLoaded', initializeApp);
 
